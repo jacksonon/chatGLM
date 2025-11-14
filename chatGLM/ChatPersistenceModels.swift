@@ -34,6 +34,8 @@ final class MessageRecord {
     var videoURL: String?
     var attachedImageData: Data?
     var attachedFileName: String?
+    var reasoning: String?
+    var isLoadingPending: Bool
 
     init(
         id: UUID = UUID(),
@@ -43,7 +45,9 @@ final class MessageRecord {
         imageURLs: [String] = [],
         videoURL: String? = nil,
         attachedImageData: Data? = nil,
-        attachedFileName: String? = nil
+        attachedFileName: String? = nil,
+        reasoning: String? = nil,
+        isLoadingPending: Bool = false
     ) {
         self.id = id
         self.sender = sender
@@ -53,5 +57,7 @@ final class MessageRecord {
         self.videoURL = videoURL
         self.attachedImageData = attachedImageData
         self.attachedFileName = attachedFileName
+        self.reasoning = reasoning
+        self.isLoadingPending = isLoadingPending
     }
 }

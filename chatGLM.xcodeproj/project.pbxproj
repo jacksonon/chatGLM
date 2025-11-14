@@ -18,11 +18,16 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
+/* Begin PBXBuildFile section */
+		4C1000012EC8AAAA00000001 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1000032EC8AAAA00000001 /* MarkdownUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		4C066CFA2EC76DF000C9C712 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4C1000012EC8AAAA00000001 /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -64,6 +69,9 @@
 				4C066CFF2EC76DF000C9C712 /* chatGLM */,
 			);
 			name = chatGLM;
+			packageProductDependencies = (
+				4C1000032EC8AAAA00000001 /* MarkdownUI */,
+			);
 			productName = chatGLM;
 			productReference = 4C066CFD2EC76DF000C9C712 /* chatGLM.app */;
 			productType = "com.apple.product-type.application";
@@ -96,6 +104,9 @@
 			productRefGroup = 4C066CFE2EC76DF000C9C712 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (
+				4C1000022EC8AAAA00000001 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+			);
 			targets = (
 				4C066CFC2EC76DF000C9C712 /* chatGLM */,
 			);
@@ -249,7 +260,17 @@
 				DEVELOPMENT_TEAM = S3L66NY2J2;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -293,7 +314,17 @@
 				DEVELOPMENT_TEAM = S3L66NY2J2;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -329,6 +360,7 @@
 		};
 /* End XCBuildConfiguration section */
 
+
 /* Begin XCConfigurationList section */
 		4C066CF82EC76DF000C9C712 /* Build configuration list for PBXProject "chatGLM" */ = {
 			isa = XCConfigurationList;
@@ -349,6 +381,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4C1000022EC8AAAA00000001 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4C1000032EC8AAAA00000001 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C1000022EC8AAAA00000001 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4C066CF52EC76DF000C9C712 /* Project object */;
 }

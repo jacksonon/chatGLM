@@ -31,10 +31,12 @@ struct ChatMessage: Identifiable, Equatable {
     var createdAt: Date
 
     var isStreaming: Bool
+    var isLoadingPending: Bool
     var imageURLs: [URL]
     var videoURL: URL?
     var attachedImageData: Data?
     var attachedFileName: String?
+    var reasoning: String?
 
     init(
         id: UUID = UUID(),
@@ -42,19 +44,23 @@ struct ChatMessage: Identifiable, Equatable {
         text: String,
         createdAt: Date = Date(),
         isStreaming: Bool = false,
+        isLoadingPending: Bool = false,
         imageURLs: [URL] = [],
         videoURL: URL? = nil,
         attachedImageData: Data? = nil,
-        attachedFileName: String? = nil
+        attachedFileName: String? = nil,
+        reasoning: String? = nil
     ) {
         self.id = id
         self.sender = sender
         self.text = text
         self.createdAt = createdAt
         self.isStreaming = isStreaming
+        self.isLoadingPending = isLoadingPending
         self.imageURLs = imageURLs
         self.videoURL = videoURL
         self.attachedImageData = attachedImageData
         self.attachedFileName = attachedFileName
+        self.reasoning = reasoning
     }
 }

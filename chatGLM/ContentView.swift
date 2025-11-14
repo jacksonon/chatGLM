@@ -8,6 +8,7 @@ import UIKit
 #elseif os(macOS)
 import AppKit
 #endif
+import MarkdownUI
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
@@ -32,7 +33,7 @@ struct ContentView: View {
             .navigationSplitViewStyle(.balanced)
             #else
             NavigationStack {
-                chatArea
+                iosConversationList
             }
             #endif
         }
@@ -45,7 +46,59 @@ struct ContentView: View {
                 }
             }
         }
+        .sheet(item: $activeSheet) { item in
+            switch item {
+            case .settings:
+                SettingsView()
+            }
+        }
     }
+
+    #if !os(macOS)
+    private var iosConversationList: some View {
+        List {
+            Section {
+                Button {
+                    createNewConversation()
+                } label: {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(.blue)
+                        Text("新建对话")
+                    }
+                }
+            }
+
+            Section(header: Text("历史对话")) {
+                ForEach(conversations) { conversation in
+                    NavigationLink {
+                        chatArea
+                            .onAppear {
+                                selectConversation(conversation)
+                            }
+                    } label: {
+                        HStack {
+                            Image(systemName: "message.fill")
+                                .foregroundStyle(.secondary)
+                            Text(conversation.title.isEmpty ? "新会话" : conversation.title)
+                                .lineLimit(1)
+                            Spacer()
+                        }
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            deleteConversation(conversation)
+                        } label: {
+                            Label("删除", systemImage: "trash")
+                        }
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("会话")
+    }
+    #endif
 
     private var sidebar: some View {
         VStack(spacing: 0) {
@@ -68,47 +121,47 @@ struct ContentView: View {
 
             Divider()
 
-            // 会话列表占位
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("新建对话")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Button {
-                            createNewConversation()
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .buttonStyle(.plain)
+            List {
+                HStack {
+                    Text("新建对话")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        createNewConversation()
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12, weight: .semibold))
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                    .buttonStyle(.plain)
+                }
 
-                    ForEach(conversations) { conversation in
-                        HStack {
-                            Image(systemName: "message.fill")
-                                .foregroundStyle(.secondary)
-                            Text(conversation.title.isEmpty ? "新会话" : conversation.title)
-                                .lineLimit(1)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 6)
-                        .contentShape(Rectangle())
-                        .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(conversation.id == selectedConversation?.id ? Color.white.opacity(0.06) : .clear)
-                        )
-                        .onTapGesture {
-                            selectConversation(conversation)
+                ForEach(conversations) { conversation in
+                    HStack {
+                        Image(systemName: "message.fill")
+                            .foregroundStyle(.secondary)
+                        Text(conversation.title.isEmpty ? "新会话" : conversation.title)
+                            .lineLimit(1)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                    .listRowBackground(
+                        (conversation.id == selectedConversation?.id ? Color.white.opacity(0.06) : .clear)
+                            .background(Color.clear)
+                    )
+                    .onTapGesture {
+                        selectConversation(conversation)
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            deleteConversation(conversation)
+                        } label: {
+                            Label("删除", systemImage: "trash")
                         }
                     }
                 }
-                .padding(.bottom, 12)
             }
+            .listStyle(.sidebar)
 
             Spacer()
 
@@ -139,8 +192,13 @@ struct ContentView: View {
 
                 Spacer()
 
-                Image(systemName: "ellipsis")
-                    .foregroundStyle(.secondary)
+                Button {
+                    activeSheet = .settings
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -164,6 +222,14 @@ struct ContentView: View {
         )
     }
 
+    private enum ActiveSheet: Identifiable {
+        case settings
+
+        var id: Int { hashValue }
+    }
+
+    @State private var activeSheet: ActiveSheet?
+
     private var chatArea: some View {
         VStack(spacing: 0) {
             header
@@ -177,7 +243,7 @@ struct ContentView: View {
                 messages: viewModel.messages,
                 animationNamespace: animationNamespace
             )
-            .onChange(of: viewModel.messages.count) { _ in
+            .onChange(of: viewModel.messages.count) { _, _ in
                 persistCurrentConversation()
             }
 
@@ -193,10 +259,13 @@ struct ContentView: View {
                 onSend: {
                     viewModel.sendCurrentInput()
                     persistCurrentConversation()
+                },
+                onCancel: {
+                    viewModel.cancelCurrentRequest()
                 }
             )
             .padding(.horizontal, 24)
-            .padding(.vertical, 12)
+            .padding(.vertical, 8)
         }
         .background(
             Color(red: 20/255, green: 21/255, blue: 25/255)
@@ -250,6 +319,25 @@ struct ContentView: View {
 
     // MARK: - Conversation helpers
 
+    private func deleteConversation(_ conversation: ConversationRecord) {
+        if selectedConversation?.id == conversation.id {
+            selectedConversation = nil
+            viewModel.messages = []
+        }
+
+        modelContext.delete(conversation)
+
+        do {
+            try modelContext.save()
+        } catch {
+            // ignore for now
+        }
+
+        if selectedConversation == nil, let first = conversations.first {
+            selectConversation(first)
+        }
+    }
+
     private func selectConversation(_ conversation: ConversationRecord) {
         selectedConversation = conversation
         loadMessages(from: conversation)
@@ -275,10 +363,12 @@ struct ContentView: View {
                 text: record.text,
                 createdAt: record.createdAt,
                 isStreaming: false,
+                isLoadingPending: record.isLoadingPending,
                 imageURLs: imageURLs,
                 videoURL: videoURL,
                 attachedImageData: record.attachedImageData,
-                attachedFileName: record.attachedFileName
+                attachedFileName: record.attachedFileName,
+                reasoning: record.reasoning
             )
         }
     }
@@ -303,7 +393,9 @@ struct ContentView: View {
                 imageURLs: imageURLStrings,
                 videoURL: videoURLString,
                 attachedImageData: message.attachedImageData,
-                attachedFileName: message.attachedFileName
+                attachedFileName: message.attachedFileName,
+                reasoning: message.reasoning,
+                isLoadingPending: message.isLoadingPending
             )
         }
 
@@ -393,7 +485,7 @@ struct ChatMessagesScrollView: View {
     var animationNamespace: Namespace.ID
 
     var body: some View {
-        ScrollViewReader { proxy in
+            ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(messages) { message in
@@ -411,11 +503,16 @@ struct ChatMessagesScrollView: View {
                 .padding(.vertical, 16)
             }
             .background(Color.black.opacity(0.25))
-            .onChange(of: messages.count) { _ in
+            .onChange(of: messages.count) { _, _ in
                 if let last = messages.last {
                     withAnimation(.easeOut(duration: 0.35)) {
                         proxy.scrollTo(last.id, anchor: .bottom)
                     }
+                }
+            }
+            .onChange(of: messages) { _, _ in
+                if let last = messages.last {
+                    proxy.scrollTo(last.id, anchor: .bottom)
                 }
             }
         }
@@ -435,22 +532,44 @@ struct ChatBubbleView: View {
             }
 
             VStack(alignment: message.sender == .assistant ? .leading : .trailing, spacing: 8) {
-                Text(message.text)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .padding(12)
-                    .background(
-                        bubbleBackground
-                            .matchedGeometryEffect(id: "bubble-\(message.id)", in: animationNamespace)
+                if let reasoning = message.reasoning,
+                   !reasoning.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                   message.sender == .assistant {
+                    ReasoningCardView(text: reasoning)
+                }
+
+                Group {
+                    if message.sender == .assistant {
+                        Markdown(message.text)
+                            .padding(12)
+                            .foregroundStyle(.primary)
+                            .background(
+                                bubbleBackground
+                                    .matchedGeometryEffect(id: "bubble-\(message.id)", in: animationNamespace)
+                            )
+                    } else {
+                        Text(message.text)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                            .padding(12)
+                            .background(
+                                bubbleBackground
+                                    .matchedGeometryEffect(id: "bubble-\(message.id)", in: animationNamespace)
+                            )
+                    }
+                }
+                .overlay(
+                    message.isStreaming
+                    ? AnyView(
+                        ShimmerView()
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     )
-                    .overlay(
-                        message.isStreaming
-                        ? AnyView(
-                            ShimmerView()
-                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        )
-                        : AnyView(EmptyView())
-                    )
+                    : AnyView(EmptyView())
+                )
+
+                if message.isLoadingPending {
+                    LoadingIndicatorView()
+                }
 
                 if let data = message.attachedImageData {
                     AttachedImagePreview(data: data)
@@ -650,6 +769,47 @@ struct AttachedImagePreview: View {
     }
 }
 
+struct ReasoningCardView: View {
+    let text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("推理过程")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            ScrollView {
+                Text(text)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 64)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+        )
+    }
+}
+
+struct LoadingIndicatorView: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .progressViewStyle(.circular)
+            Text("生成中...")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.white.opacity(0.03))
+        )
+    }
+}
+
 struct RainbowGlowInputBar: View {
     @Binding var text: String
     var isSending: Bool
@@ -657,6 +817,7 @@ struct RainbowGlowInputBar: View {
     @Binding var selectedFileSummary: String?
     @Binding var selectedFileName: String?
     var onSend: () -> Void
+    var onCancel: () -> Void
 
     @State private var glowRotation: Double = 0
     @FocusState private var isFocused: Bool
@@ -667,12 +828,12 @@ struct RainbowGlowInputBar: View {
     @State private var showFileImporter = false
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             ZStack {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(Color.black.opacity(0.4))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .strokeBorder(
                                 AngularGradient(
                                     gradient: Gradient(colors: [
@@ -692,18 +853,17 @@ struct RainbowGlowInputBar: View {
                         value: glowRotation
                     )
 
-                VStack(spacing: 6) {
+                VStack(spacing: 4) {
                     // 输入区域：最多 3 行，超出后内部可滚动
-                    TextField("询问任何问题", text: $text, axis: .vertical)
-                        .lineLimit(1...3)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 10)
+                    MultilineInputView(text: $text, onSend: performSend)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 6)
+                        .frame(minHeight: 36)
                         .focused($isFocused)
 
-                    HStack(spacing: 16) {
+                    HStack(spacing: 14) {
                         attachmentMenu
 
-                        // 预留其它按钮位（示例：全球、火箭、翻译）
                         Image(systemName: "globe")
                             .foregroundStyle(.secondary)
                         Image(systemName: "paperclip")
@@ -716,28 +876,42 @@ struct RainbowGlowInputBar: View {
                         Image(systemName: "mic")
                             .foregroundStyle(.secondary)
 
-                        Button(action: onSend) {
-                            ZStack {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [.blue, .purple],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .frame(width: 32, height: 32)
-                                Image(systemName: isSending ? "hourglass" : "waveform")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(.white)
+                        if isSending {
+                            Button(action: onCancel) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.gray.opacity(0.3))
+                                        .frame(width: 30, height: 30)
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                }
                             }
+                        } else {
+                            Button(action: performSend) {
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [.blue, .purple],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .frame(width: 30, height: 30)
+                                    Image(systemName: "waveform")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                            .disabled(trimmedText.isEmpty)
                         }
-                        .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 6)
                 }
             }
+            .frame(minHeight: 56, maxHeight: 110, alignment: .top)
             .onAppear {
                 glowRotation = 0
                 withAnimation(
@@ -748,6 +922,15 @@ struct RainbowGlowInputBar: View {
                 }
             }
         }
+    }
+
+    private var trimmedText: String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func performSend() {
+        guard !trimmedText.isEmpty else { return }
+        onSend()
     }
 
     private var attachmentMenu: some View {

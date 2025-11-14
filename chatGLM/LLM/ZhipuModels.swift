@@ -24,12 +24,14 @@ struct ZhipuAsyncChatRequest: Encodable {
     let messages: [ZhipuChatMessage]
     let temperature: Double?
     let maxTokens: Int?
+    let stream: Bool?
 
-    init(model: ZhipuModel, messages: [ZhipuChatMessage], temperature: Double? = nil, maxTokens: Int? = nil) {
+    init(model: ZhipuModel, messages: [ZhipuChatMessage], temperature: Double? = nil, maxTokens: Int? = nil, stream: Bool? = nil) {
         self.model = model.rawValue
         self.messages = messages
         self.temperature = temperature
         self.maxTokens = maxTokens
+        self.stream = stream
     }
 
     enum CodingKeys: String, CodingKey {
@@ -37,6 +39,7 @@ struct ZhipuAsyncChatRequest: Encodable {
         case messages
         case temperature
         case maxTokens = "max_tokens"
+        case stream
     }
 }
 
@@ -119,6 +122,13 @@ struct ZhipuAsyncResultResponse: Decodable {
         struct Message: Decodable {
             let role: String
             let content: String?
+            let reasoningContent: String?
+
+            enum CodingKeys: String, CodingKey {
+                case role
+                case content
+                case reasoningContent = "reasoning_content"
+            }
         }
 
         let index: Int
@@ -154,6 +164,7 @@ struct ZhipuAsyncResultResponse: Decodable {
     let choices: [Choice]?
     let videoResult: [VideoResult]?
     let contentFilter: [ContentFilter]?
+    let taskStatus: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -163,6 +174,46 @@ struct ZhipuAsyncResultResponse: Decodable {
         case choices
         case videoResult = "video_result"
         case contentFilter = "content_filter"
+        case taskStatus = "task_status"
     }
 }
 
+struct ZhipuStreamResponse: Decodable {
+    struct Choice: Decodable {
+        struct Delta: Decodable {
+            let content: String?
+            let reasoningContent: String?
+            let role: String?
+
+            enum CodingKeys: String, CodingKey {
+                case content
+                case reasoningContent = "reasoning_content"
+                case role
+            }
+        }
+
+        struct Message: Decodable {
+            let content: String?
+            let reasoningContent: String?
+
+            enum CodingKeys: String, CodingKey {
+                case content
+                case reasoningContent = "reasoning_content"
+            }
+        }
+
+        let delta: Delta?
+        let message: Message?
+        let finishReason: String?
+        let index: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case delta
+            case message
+            case finishReason = "finish_reason"
+            case index
+        }
+    }
+
+    let choices: [Choice]
+}

@@ -10,7 +10,7 @@ extension ZhipuAPIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingAPIKey:
-            return "未配置智谱 API Key。请在 Xcode 的 Scheme 中设置环境变量 ZHIPU_API_KEY。"
+            return "未配置智谱 API Key。请在设置中填写，或在 Xcode 的 Scheme 中设置环境变量 ZHIPU_API_KEY。"
         case .invalidResponse:
             return "服务器响应无效，请稍后重试。"
         case let .httpError(statusCode, body):
@@ -35,7 +35,10 @@ final class ZhipuAPIClient {
         baseURL: URL = URL(string: "https://open.bigmodel.cn")!,
         urlSession: URLSession = .shared,
         apiKeyProvider: @escaping () -> String = {
-            ProcessInfo.processInfo.environment["ZHIPU_API_KEY"] ?? ""
+            if let stored = UserDefaults.standard.string(forKey: "ZhipuAPIKey"), !stored.isEmpty {
+                return stored
+            }
+            return ProcessInfo.processInfo.environment["ZHIPU_API_KEY"] ?? ""
         }
     ) {
         self.baseURL = baseURL
@@ -71,12 +74,26 @@ final class ZhipuAPIClient {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ZhipuAPIError.invalidResponse
         }
+#if DEBUG
+        print("[ZhipuAPI] POST \(path) status=\(httpResponse.statusCode)")
+#endif
         guard 200..<300 ~= httpResponse.statusCode else {
             let bodyText = String(data: data, encoding: .utf8)
+#if DEBUG
+            if let bodyText {
+                print("[ZhipuAPI] POST \(path) error body: \(bodyText)")
+            }
+#endif
             throw ZhipuAPIError.httpError(statusCode: httpResponse.statusCode, body: bodyText)
         }
 
         let decoder = JSONDecoder()
+#if DEBUG
+        if let bodyText = String(data: data, encoding: .utf8) {
+            let snippet = bodyText.count > 400 ? String(bodyText.prefix(400)) + "…" : bodyText
+            print("[ZhipuAPI] POST \(path) response: \(snippet)")
+        }
+#endif
         return try decoder.decode(Response.self, from: data)
     }
 
@@ -87,12 +104,26 @@ final class ZhipuAPIClient {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ZhipuAPIError.invalidResponse
         }
+#if DEBUG
+        print("[ZhipuAPI] GET \(path) status=\(httpResponse.statusCode)")
+#endif
         guard 200..<300 ~= httpResponse.statusCode else {
             let bodyText = String(data: data, encoding: .utf8)
+#if DEBUG
+            if let bodyText {
+                print("[ZhipuAPI] GET \(path) error body: \(bodyText)")
+            }
+#endif
             throw ZhipuAPIError.httpError(statusCode: httpResponse.statusCode, body: bodyText)
         }
 
         let decoder = JSONDecoder()
+#if DEBUG
+        if let bodyText = String(data: data, encoding: .utf8) {
+            let snippet = bodyText.count > 400 ? String(bodyText.prefix(400)) + "…" : bodyText
+            print("[ZhipuAPI] GET \(path) response: \(snippet)")
+        }
+#endif
         return try decoder.decode(Response.self, from: data)
     }
 
@@ -118,5 +149,58 @@ final class ZhipuAPIClient {
 
     func fetchAsyncResult(id: String) async throws -> ZhipuAsyncResultResponse {
         try await get(path: "api/paas/v4/async-result/\(id)")
+    }
+
+    // MARK: - Streaming chat
+
+    func streamChatCompletion(request: ZhipuAsyncChatRequest) -> AsyncThrowingStream<ZhipuStreamResponse, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    var urlRequest = try makeRequest(path: "api/paas/v4/chat/completions", method: "POST")
+                    urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+                    let encoder = JSONEncoder()
+                    urlRequest.httpBody = try encoder.encode(request)
+
+                    let (bytes, response) = try await urlSession.bytes(for: urlRequest)
+                    guard let httpResponse = response as? HTTPURLResponse else {
+                        throw ZhipuAPIError.invalidResponse
+                    }
+                    guard 200..<300 ~= httpResponse.statusCode else {
+                        throw ZhipuAPIError.httpError(statusCode: httpResponse.statusCode, body: nil)
+                    }
+
+                    var iterator = bytes.lines.makeAsyncIterator()
+                    let decoder = JSONDecoder()
+
+                    while let line = try await iterator.next() {
+                        if line.isEmpty || line.hasPrefix(":") {
+                            continue
+                        }
+
+                        guard line.hasPrefix("data:") else { continue }
+                        let payload = line.dropFirst(5).trimmingCharacters(in: .whitespacesAndNewlines)
+                        if payload == "[DONE]" {
+                            continuation.finish()
+                            break
+                        }
+                        guard !payload.isEmpty else { continue }
+                        do {
+                            let chunk = try decoder.decode(ZhipuStreamResponse.self, from: Data(payload.utf8))
+                            continuation.yield(chunk)
+                        } catch {
+#if DEBUG
+                            print("[ZhipuAPI] stream decode error:", error)
+#endif
+                        }
+                    }
+                } catch {
+                    continuation.finish(throwing: error)
+                    return
+                }
+
+                continuation.finish()
+            }
+        }
     }
 }
