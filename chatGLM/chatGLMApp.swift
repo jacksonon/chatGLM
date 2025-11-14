@@ -1,10 +1,3 @@
-//
-//  chatGLMApp.swift
-//  chatGLM
-//
-//  Created by os on 2025/11/14.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -12,12 +5,13 @@ import SwiftData
 struct chatGLMApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            ConversationRecord.self,
+            MessageRecord.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(for: schema, configurations: [configuration])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }

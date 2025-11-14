@@ -64,8 +64,6 @@
 				4C066CFF2EC76DF000C9C712 /* chatGLM */,
 			);
 			name = chatGLM;
-			packageProductDependencies = (
-			);
 			productName = chatGLM;
 			productReference = 4C066CFD2EC76DF000C9C712 /* chatGLM.app */;
 			productType = "com.apple.product-type.application";

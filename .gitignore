@@ -1,0 +1,37 @@
+# Xcode build artifacts
+build/
+DerivedData/
+
+# Xcode workspace/user settings
+*.xccheckout
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+
+# Swift / iOS
+Products/
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# Swift Package Manager
+.build/
+Packages/
+
+# CocoaPods (if used)
+Pods/
+Podfile.lock
+
+# Carthage (if used)
+Carthage/Build/
+
+# Fastlane (if used)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+
+# General
+.DS_Store
+*.orig
+
