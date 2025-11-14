@@ -273,48 +273,54 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 12) {
-                Text("chatGLM")
-                    .font(.title3.weight(.semibold))
-
-                Text(">")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Button {
-                    // 升级按钮占位
-                } label: {
-                    Text("+ 升级套餐")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
+        HStack(spacing: 12) {
+            Menu {
+                ForEach(ChatMode.allCases) { mode in
+                    Button {
+                        viewModel.mode = mode
+                    } label: {
+                        if viewModel.mode == mode {
+                            Label(mode.title, systemImage: "checkmark")
+                        } else {
+                            Text(mode.title)
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text("chatGLM")
+                        .font(.title3.weight(.semibold))
+                    Text(viewModel.mode.title)
+                        .font(.caption)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
                         .background(
                             Capsule()
-                                .fill(Color.purple.opacity(0.35))
+                                .fill(Color.white.opacity(0.08))
                         )
                 }
-                .buttonStyle(.plain)
             }
 
-            HStack {
-                Spacer()
-                modePicker
-                    .frame(maxWidth: 320)
-                Spacer()
-            }
-        }
-    }
+            Text(">")
+                .font(.headline)
+                .foregroundStyle(.secondary)
 
-    private var modePicker: some View {
-        Picker("", selection: $viewModel.mode) {
-            ForEach(ChatMode.allCases) { mode in
-                Text(mode.title).tag(mode)
+            Spacer()
+
+            Button {
+                // 升级按钮占位
+            } label: {
+                Text("+ 升级套餐")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.purple.opacity(0.35))
+                    )
             }
+            .buttonStyle(.plain)
         }
-        .pickerStyle(.segmented)
     }
 
     // MARK: - Conversation helpers
