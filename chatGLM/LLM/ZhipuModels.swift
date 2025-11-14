@@ -7,19 +7,19 @@
 
 import Foundation
 
-enum ZhipuModel: String {
+enum ZhipuModel: String, Sendable {
     case glm45Flash = "glm-4.5-flash"
     case glm41VThinkingFlash = "glm-4.1v-thinking-flash"
     case cogview3Flash = "cogview-3-flash"
     case cogVideoXFlash = "cogvideox-flash"
 }
 
-struct ZhipuChatMessage: Encodable {
+struct ZhipuChatMessage: Encodable, Sendable {
     let role: String
     let content: String
 }
 
-struct ZhipuAsyncChatRequest: Encodable {
+struct ZhipuAsyncChatRequest: Encodable, Sendable {
     let model: String
     let messages: [ZhipuChatMessage]
     let temperature: Double?
@@ -43,7 +43,7 @@ struct ZhipuAsyncChatRequest: Encodable {
     }
 }
 
-struct ZhipuVideoGenerationRequest: Encodable {
+struct ZhipuVideoGenerationRequest: Encodable, Sendable {
     let model: String
     let prompt: String
     let quality: String?
@@ -70,7 +70,7 @@ struct ZhipuVideoGenerationRequest: Encodable {
     }
 }
 
-struct ZhipuImageGenerationRequest: Encodable {
+struct ZhipuImageGenerationRequest: Encodable, Sendable {
     let model: String
     let prompt: String
     let size: String?

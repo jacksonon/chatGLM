@@ -97,6 +97,16 @@ struct ContentView: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("会话")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    activeSheet = .settings
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("设置智谱 API Key")
+            }
+        }
     }
     #endif
 

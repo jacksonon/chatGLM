@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4C0295F52EC7BF4E00DD4F3C /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 4C0295F42EC7BF4E00DD4F3C /* Alamofire */; };
+		4C1000012EC8AAAA00000001 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1000032EC8AAAA00000001 /* MarkdownUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		4C066CFD2EC76DF000C9C712 /* chatGLM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = chatGLM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -18,16 +23,13 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
-/* Begin PBXBuildFile section */
-		4C1000012EC8AAAA00000001 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4C1000032EC8AAAA00000001 /* MarkdownUI */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXFrameworksBuildPhase section */
 		4C066CFA2EC76DF000C9C712 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				4C1000012EC8AAAA00000001 /* MarkdownUI in Frameworks */,
+				4C0295F52EC7BF4E00DD4F3C /* Alamofire in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +73,7 @@
 			name = chatGLM;
 			packageProductDependencies = (
 				4C1000032EC8AAAA00000001 /* MarkdownUI */,
+				4C0295F42EC7BF4E00DD4F3C /* Alamofire */,
 			);
 			productName = chatGLM;
 			productReference = 4C066CFD2EC76DF000C9C712 /* chatGLM.app */;
@@ -100,13 +103,14 @@
 			);
 			mainGroup = 4C066CF42EC76DF000C9C712;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4C1000022EC8AAAA00000001 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+				4C0295F32EC7BF4E00DD4F3C /* XCRemoteSwiftPackageReference "Alamofire" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4C066CFE2EC76DF000C9C712 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			packageReferences = (
-				4C1000022EC8AAAA00000001 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
-			);
 			targets = (
 				4C066CFC2EC76DF000C9C712 /* chatGLM */,
 			);
@@ -360,7 +364,6 @@
 		};
 /* End XCBuildConfiguration section */
 
-
 /* Begin XCConfigurationList section */
 		4C066CF82EC76DF000C9C712 /* Build configuration list for PBXProject "chatGLM" */ = {
 			isa = XCConfigurationList;
@@ -383,6 +386,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		4C0295F32EC7BF4E00DD4F3C /* XCRemoteSwiftPackageReference "Alamofire" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.10.2;
+			};
+		};
 		4C1000022EC8AAAA00000001 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
@@ -394,6 +405,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4C0295F42EC7BF4E00DD4F3C /* Alamofire */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4C0295F32EC7BF4E00DD4F3C /* XCRemoteSwiftPackageReference "Alamofire" */;
+			productName = Alamofire;
+		};
 		4C1000032EC8AAAA00000001 /* MarkdownUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 4C1000022EC8AAAA00000001 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;

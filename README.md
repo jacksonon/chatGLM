@@ -2,7 +2,9 @@
 
 跨平台的 SwiftUI 客户端，封装智谱 GLM 能力，提供类似 ChatGPT 的对话体验，并支持文生图、视频生成和图像理解。目标平台包括 iOS、iPadOS、macOS 与 visionOS。
 
-![chatGLM UI 示例](https://github.com/jacksonon/chatGLM/raw/main/sample1.png)
+![chatGLM macOS UI 示例](https://github.com/jacksonon/chatGLM/raw/main/sample1.png)
+
+![chatGLM iOS UI 示例](https://github.com/jacksonon/chatGLM/raw/main/sample2.png)
 
 ## 架构概览
 
