@@ -7,6 +7,7 @@ import PhotosUI
 import UIKit
 #elseif os(macOS)
 import AppKit
+import Carbon.HIToolbox
 #endif
 import MarkdownUI
 
@@ -16,7 +17,7 @@ struct ContentView: View {
     @Query(sort: \ConversationRecord.updatedAt, order: .reverse)
     private var conversations: [ConversationRecord]
 
-    @StateObject private var viewModel = ChatViewModel()
+    @StateObject private var viewModel = ChatViewModel.shared
     @State private var selectedConversation: ConversationRecord?
     @Namespace private var animationNamespace
 
@@ -1138,3 +1139,216 @@ struct RainbowGlowInputBar: View {
         }
     }
 }
+
+#if os(macOS)
+struct QuickInputView: View {
+    @ObservedObject var viewModel: ChatViewModel
+    @State private var text: String = ""
+    @FocusState private var isFocused: Bool
+
+    init(viewModel: ChatViewModel = .shared) {
+        self.viewModel = viewModel
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text("快速提问")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            TextField("输入你的问题…", text: $text, onCommit: commit)
+                .textFieldStyle(.roundedBorder)
+                .focused($isFocused)
+
+            HStack {
+                Spacer()
+                Button("取消") {
+                    QuickInputPanelController.shared.close()
+                }
+                Button("发送") {
+                    commit()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .frame(minWidth: 420)
+        .onAppear {
+            isFocused = true
+        }
+    }
+
+    private func commit() {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        text = ""
+        guard !trimmed.isEmpty else {
+            QuickInputPanelController.shared.close()
+            return
+        }
+
+        viewModel.sendFromQuickInputPanel(text: trimmed)
+        QuickInputPanelController.shared.close()
+        bringMainWindowToFront()
+    }
+
+    private func bringMainWindowToFront() {
+        guard let window = NSApplication.shared.windows.first(where: { !($0 is NSPanel) }) else {
+            return
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+}
+
+final class QuickInputPanelController {
+    static let shared = QuickInputPanelController()
+
+    private var panel: NSPanel?
+
+    private init() {}
+
+    func toggle() {
+        if let panel, panel.isVisible {
+            panel.orderOut(nil)
+        } else {
+            show()
+        }
+    }
+
+    func show() {
+        if panel == nil {
+            let contentView = QuickInputView()
+            let hosting = NSHostingController(rootView: contentView)
+
+            let panel = NSPanel(
+                contentRect: NSRect(x: 0, y: 0, width: 480, height: 120),
+                styleMask: [.titled, .fullSizeContentView],
+                backing: .buffered,
+                defer: false
+            )
+            panel.level = .floating
+            panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            panel.isFloatingPanel = true
+            panel.hidesOnDeactivate = false
+            panel.isMovableByWindowBackground = true
+            panel.titleVisibility = .hidden
+            panel.titlebarAppearsTransparent = true
+            panel.standardWindowButton(.closeButton)?.isHidden = true
+            panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            panel.standardWindowButton(.zoomButton)?.isHidden = true
+            panel.contentViewController = hosting
+            panel.isReleasedWhenClosed = false
+
+            self.panel = panel
+        }
+
+        guard let panel else { return }
+
+        if let screen = NSScreen.main {
+            let size = panel.frame.size
+            let x = screen.frame.midX - size.width / 2
+            let y = screen.frame.midY - size.height / 2
+            panel.setFrameOrigin(NSPoint(x: x, y: y))
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    func close() {
+        panel?.orderOut(nil)
+    }
+}
+
+final class GlobalHotKeyManager {
+    static let shared = GlobalHotKeyManager()
+
+    private var hotKeyRef: EventHotKeyRef?
+    private var eventHandler: EventHandlerRef?
+
+    private init() {}
+
+    func register() {
+        unregister()
+
+        var hotKeyID = EventHotKeyID()
+        hotKeyID.signature = OSType(UInt32(truncatingIfNeeded: 1))
+        hotKeyID.id = 1
+
+        var eventType = EventTypeSpec(
+            eventClass: OSType(kEventClassKeyboard),
+            eventKind: UInt32(kEventHotKeyPressed)
+        )
+
+        let callback: EventHandlerUPP = { _, event, _ in
+            guard let event else {
+                return noErr
+            }
+
+            var hotKeyID = EventHotKeyID()
+            let status = GetEventParameter(
+                event,
+                EventParamName(kEventParamDirectObject),
+                EventParamType(typeEventHotKeyID),
+                nil,
+                MemoryLayout<EventHotKeyID>.size,
+                nil,
+                &hotKeyID
+            )
+
+            if status == noErr, hotKeyID.id == 1 {
+                DispatchQueue.main.async {
+                    QuickInputPanelController.shared.toggle()
+                }
+            }
+
+            return noErr
+        }
+
+        let status = InstallEventHandler(
+            GetApplicationEventTarget(),
+            callback,
+            1,
+            &eventType,
+            nil,
+            &eventHandler
+        )
+
+        guard status == noErr else {
+            print("GlobalHotKeyManager: InstallEventHandler failed with status \(status)")
+            return
+        }
+
+        let keyCode = UInt32(kVK_ANSI_R)
+        let modifiers = UInt32(optionKey)
+
+        let registerStatus = RegisterEventHotKey(
+            keyCode,
+            modifiers,
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &hotKeyRef
+        )
+
+        if registerStatus != noErr {
+            print("GlobalHotKeyManager: RegisterEventHotKey failed with status \(registerStatus)")
+        }
+    }
+
+    func unregister() {
+        if let hotKeyRef {
+            UnregisterEventHotKey(hotKeyRef)
+            self.hotKeyRef = nil
+        }
+        if let eventHandler {
+            RemoveEventHandler(eventHandler)
+            self.eventHandler = nil
+        }
+    }
+
+    deinit {
+        unregister()
+    }
+}
+#endif

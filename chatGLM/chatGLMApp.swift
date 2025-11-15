@@ -1,8 +1,15 @@
 import SwiftUI
 import SwiftData
+#if os(macOS)
+import AppKit
+#endif
 
 @main
 struct chatGLMApp: App {
+    #if os(macOS)
+    @NSApplicationDelegateAdaptor(MacAppDelegate.self) private var appDelegate
+    #endif
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             ConversationRecord.self,
@@ -34,3 +41,11 @@ struct chatGLMApp: App {
         .modelContainer(sharedModelContainer)
     }
 }
+
+#if os(macOS)
+final class MacAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        GlobalHotKeyManager.shared.register()
+    }
+}
+#endif

@@ -8,6 +8,8 @@ import AppKit
 
 @MainActor
 final class ChatViewModel: ObservableObject {
+    static let shared = ChatViewModel()
+
     @Published var messages: [ChatMessage] = []
     @Published var inputText: String = ""
     @Published var mode: ChatMode = .chat
@@ -38,6 +40,32 @@ final class ChatViewModel: ObservableObject {
         )
         messages.append(userMessage)
         inputText = ""
+
+        currentTask?.cancel()
+        currentTask = Task { [weak self] in
+            await self?.send(for: userMessage)
+        }
+    }
+
+    /// 专用于全局快捷输入面板，避免与主输入框状态产生耦合。
+    func sendFromQuickInputPanel(text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return
+        }
+
+        // 防止因快捷输入面板的重复触发导致立刻出现两条完全相同的用户消息。
+        if let last = messages.last,
+           last.sender == .user,
+           last.text == trimmed {
+            return
+        }
+
+        let userMessage = ChatMessage(
+            sender: .user,
+            text: trimmed
+        )
+        messages.append(userMessage)
 
         currentTask?.cancel()
         currentTask = Task { [weak self] in
