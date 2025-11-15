@@ -316,7 +316,7 @@ struct ContentView: View {
                 messages: viewModel.messages,
                 animationNamespace: animationNamespace
             )
-            .onChange(of: viewModel.messages.count) { _, _ in
+            .onChange(of: viewModel.messages) { _, _ in
                 persistCurrentConversation()
             }
 
@@ -379,10 +379,6 @@ struct ContentView: View {
                         )
                 }
             }
-
-            Text(">")
-                .font(.headline)
-                .foregroundStyle(.secondary)
 
             Spacer()
 
@@ -575,7 +571,6 @@ struct BackgroundGradientView: View {
 struct ChatMessagesScrollView: View {
     let messages: [ChatMessage]
     var animationNamespace: Namespace.ID
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
             ScrollViewReader { proxy in
@@ -595,9 +590,6 @@ struct ChatMessagesScrollView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 16)
             }
-            .background(
-                Color.black.opacity(colorScheme == .dark ? 0.25 : 0.06)
-            )
             .onChange(of: messages.count) { _, _ in
                 if let last = messages.last {
                     withAnimation(.easeOut(duration: 0.35)) {
@@ -637,23 +629,18 @@ struct ChatBubbleView: View {
                 Group {
                     if message.sender == .assistant {
                         Markdown(message.text)
+                            .markdownTheme(.chatBubble)
                             .padding(12)
-                            .foregroundStyle(.primary)
-                            .background(
-                                bubbleBackground
-                                    .matchedGeometryEffect(id: "bubble-\(message.id)", in: animationNamespace)
-                            )
                     } else {
-                        Text(message.text)
-                            .font(.body)
-                            .foregroundStyle(.primary)
+                        Markdown(message.text)
+                            .markdownTheme(.chatBubble)
                             .padding(12)
-                            .background(
-                                bubbleBackground
-                                    .matchedGeometryEffect(id: "bubble-\(message.id)", in: animationNamespace)
-                            )
                     }
                 }
+                .background(
+                    bubbleBackground
+                        .matchedGeometryEffect(id: "bubble-\(message.id)", in: animationNamespace)
+                )
                 .overlay(
                     message.isStreaming
                     ? AnyView(
@@ -708,41 +695,24 @@ struct ChatBubbleView: View {
     }
 
     private var bubbleBackground: some View {
-        Group {
-            if message.sender == .assistant {
-                LinearGradient(
-                    colors: [
-                        Color.blue.opacity(0.9),
-                        Color.purple.opacity(0.9)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                )
+        let baseColor: Color
+
+        if message.sender == .assistant {
+            if colorScheme == .dark {
+                baseColor = Color.white.opacity(0.06)
             } else {
-                LinearGradient(
-                    colors: colorScheme == .dark
-                    ? [
-                        Color.gray.opacity(0.3),
-                        Color.gray.opacity(0.5)
-                    ]
-                    : [
-                        Color.gray.opacity(0.15),
-                        Color.gray.opacity(0.25)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                )
+                baseColor = Color.white
+            }
+        } else {
+            if colorScheme == .dark {
+                baseColor = Color.blue.opacity(0.45)
+            } else {
+                baseColor = Color.blue.opacity(0.15)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+        return RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(baseColor)
     }
 }
 
@@ -782,6 +752,24 @@ struct ShimmerView: View {
                 phase = 200
             }
         }
+    }
+}
+
+extension Theme {
+    static var chatBubble: Theme {
+        Theme
+            .gitHub
+            .codeBlock { configuration in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    configuration.label
+                        .font(.system(.body, design: .monospaced))
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color.gray.opacity(0.15))
+                        )
+                }
+            }
     }
 }
 
@@ -922,6 +910,7 @@ struct RainbowGlowInputBar: View {
 
     @State private var glowRotation: Double = 0
     @FocusState private var isFocused: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     #if canImport(PhotosUI)
     @State private var photoItem: PhotosPickerItem?
@@ -932,7 +921,11 @@ struct RainbowGlowInputBar: View {
         VStack(spacing: 6) {
             ZStack {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.black.opacity(0.4))
+                    .fill(
+                        colorScheme == .dark
+                        ? Color.white.opacity(0.05)
+                        : Color.gray.opacity(0.12)
+                    )
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .strokeBorder(
@@ -1000,7 +993,7 @@ struct RainbowGlowInputBar: View {
                                             )
                                         )
                                         .frame(width: 30, height: 30)
-                                    Image(systemName: "waveform")
+                                    Image(systemName: "paperplane.fill")
                                         .font(.system(size: 13, weight: .semibold))
                                         .foregroundStyle(.white)
                                 }
