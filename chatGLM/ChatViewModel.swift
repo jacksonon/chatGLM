@@ -17,6 +17,7 @@ final class ChatViewModel: ObservableObject {
     @Published var selectedImageData: Data?
     @Published var selectedFileSummary: String?
     @Published var selectedFileName: String?
+    @Published var selectedFileURL: URL?
 
     private let apiClient: ZhipuAPIClient
     private let enableStreamingChat = true
@@ -84,6 +85,7 @@ final class ChatViewModel: ObservableObject {
             selectedImageData = nil
             selectedFileSummary = nil
             selectedFileName = nil
+            selectedFileURL = nil
             currentTask = nil
         }
 
@@ -115,7 +117,10 @@ final class ChatViewModel: ObservableObject {
 
         if let fileContext {
             let fileNamePart = selectedFileName ?? "选中文件"
-            let extra = "\n\n附加文件（\(fileNamePart)）内容摘要：\(fileContext)"
+            var extra = "\n\n附加文件（\(fileNamePart)）内容摘要：\(fileContext)"
+            if let url = selectedFileURL {
+                extra.append("\n文件路径：\(url.path)")
+            }
             content.append(extra)
         }
 

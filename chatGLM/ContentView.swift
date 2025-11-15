@@ -71,12 +71,14 @@ struct ContentView: View {
                 }
             }
         }
+#if !os(macOS)
         .sheet(item: $activeSheet) { item in
             switch item {
             case .settings:
                 SettingsView()
             }
         }
+#endif
     }
 
     #if !os(macOS)
@@ -122,16 +124,16 @@ struct ContentView: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("会话")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    activeSheet = .settings
-                } label: {
-                    Image(systemName: "gearshape")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        activeSheet = .settings
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("设置智谱 API Key")
                 }
-                .accessibilityLabel("设置智谱 API Key")
             }
-        }
     }
     #endif
 
@@ -242,6 +244,15 @@ struct ContentView: View {
 
                 Spacer()
 
+                #if os(macOS)
+                Button {
+                    SettingsWindowController.shared.show()
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                #else
                 Button {
                     activeSheet = .settings
                 } label: {
@@ -249,6 +260,7 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                #endif
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -329,6 +341,7 @@ struct ContentView: View {
                 selectedImageData: $viewModel.selectedImageData,
                 selectedFileSummary: $viewModel.selectedFileSummary,
                 selectedFileName: $viewModel.selectedFileName,
+                selectedFileURL: $viewModel.selectedFileURL,
                 onSend: {
                     viewModel.sendCurrentInput()
                     persistCurrentConversation()
@@ -757,12 +770,11 @@ struct ShimmerView: View {
 
 extension Theme {
     static var chatBubble: Theme {
-        Theme
-            .gitHub
+        Theme()
             .codeBlock { configuration in
                 ScrollView(.horizontal, showsIndicators: false) {
                     configuration.label
-                        .font(.system(.body, design: .monospaced))
+                        .font(Font.system(.body, design: .monospaced))
                         .padding(8)
                         .background(
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -877,7 +889,7 @@ struct ReasoningCardView: View {
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white.opacity(0.05))
+                .fill(Color.white.opacity(0.03))
         )
     }
 }
@@ -905,6 +917,7 @@ struct RainbowGlowInputBar: View {
     @Binding var selectedImageData: Data?
     @Binding var selectedFileSummary: String?
     @Binding var selectedFileName: String?
+    @Binding var selectedFileURL: URL?
     var onSend: () -> Void
     var onCancel: () -> Void
 
@@ -917,8 +930,46 @@ struct RainbowGlowInputBar: View {
     #endif
     @State private var showFileImporter = false
 
+    #if os(macOS)
+    @State private var showAppPicker = false
+    @StateObject private var editorManager = EditorIntegrationManager()
+    #endif
+
     var body: some View {
         VStack(spacing: 6) {
+            if let name = selectedFileName, let summary = selectedFileSummary, !summary.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "doc.text")
+                        .foregroundStyle(.blue)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(name)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text(summary)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    Spacer()
+                    Button {
+                        clearFileContext()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(
+                            colorScheme == .dark
+                            ? Color.white.opacity(0.04)
+                            : Color.gray.opacity(0.12)
+                        )
+                )
+            }
+
             ZStack {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(
@@ -957,6 +1008,15 @@ struct RainbowGlowInputBar: View {
 
                     HStack(spacing: 14) {
                         attachmentMenu
+
+                        #if os(macOS)
+                        Button {
+                            showAppPicker = true
+                        } label: {
+                            Image(systemName: "macwindow")
+                                .foregroundStyle(.secondary)
+                        }
+                        #endif
 
                         Image(systemName: "globe")
                             .foregroundStyle(.secondary)
@@ -1016,6 +1076,24 @@ struct RainbowGlowInputBar: View {
                 }
             }
         }
+        #if os(macOS)
+        .sheet(isPresented: $showAppPicker) {
+            EditorAppPickerView(manager: editorManager) { app in
+                if let context = editorManager.currentFileContext(for: app) {
+                    Task {
+                        await loadFileContext(from: context.fileURL)
+                    }
+                } else {
+                    // 获取失败时，在文件摘要区域给出提示，方便用户手动调整。
+                    let name = app.name
+                    Task { @MainActor in
+                        selectedFileName = name
+                        selectedFileSummary = "未能从 \(name) 获取当前文件，请确认该应用中已打开一个文档，并在“系统设置 > 隐私与安全性 > 辅助功能”中为 ChatGLM 启用权限。"
+                    }
+                }
+            }
+        }
+        #endif
     }
 
     private var trimmedText: String {
@@ -1025,6 +1103,12 @@ struct RainbowGlowInputBar: View {
     private func performSend() {
         guard !trimmedText.isEmpty else { return }
         onSend()
+    }
+
+    private func clearFileContext() {
+        selectedFileName = nil
+        selectedFileSummary = nil
+        selectedFileURL = nil
     }
 
     private var attachmentMenu: some View {
@@ -1116,18 +1200,21 @@ struct RainbowGlowInputBar: View {
                 await MainActor.run {
                     selectedFileName = fileName
                     selectedFileSummary = snippet
+                    selectedFileURL = url
                 }
             } else {
                 let sizeKB = max(1, data.count / 1024)
                 await MainActor.run {
                     selectedFileName = fileName
                     selectedFileSummary = "非纯文本文件，大小约 \(sizeKB) KB。"
+                    selectedFileURL = url
                 }
             }
         } catch {
             await MainActor.run {
                 selectedFileName = url.lastPathComponent
                 selectedFileSummary = "读取文件失败：\(error.localizedDescription)"
+                selectedFileURL = url
             }
         }
     }
