@@ -12,6 +12,7 @@ import MarkdownUI
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \ConversationRecord.updatedAt, order: .reverse)
     private var conversations: [ConversationRecord]
 
@@ -32,8 +33,31 @@ struct ContentView: View {
             }
             .navigationSplitViewStyle(.balanced)
             #else
-            NavigationStack {
-                iosConversationList
+            GeometryReader { proxy in
+                let isLandscape = proxy.size.width > proxy.size.height
+
+                #if os(iOS)
+                let isPad = UIDevice.current.userInterfaceIdiom == .pad
+
+                Group {
+                    if isPad && isLandscape {
+                        NavigationSplitView {
+                            sidebar
+                        } detail: {
+                            chatArea
+                        }
+                        .navigationSplitViewStyle(.balanced)
+                    } else {
+                        NavigationStack {
+                            iosConversationList
+                        }
+                    }
+                }
+                #else
+                NavigationStack {
+                    iosConversationList
+                }
+                #endif
             }
             #endif
         }
@@ -110,6 +134,23 @@ struct ContentView: View {
     }
     #endif
 
+    private var sidebarSelection: Binding<UUID?> {
+        Binding(
+            get: { selectedConversation?.id },
+            set: { newValue in
+                guard let id = newValue else {
+                    selectedConversation = nil
+                    viewModel.messages = []
+                    return
+                }
+
+                if let conversation = conversations.first(where: { $0.id == id }) {
+                    selectConversation(conversation)
+                }
+            }
+        )
+    }
+
     private var sidebar: some View {
         VStack(spacing: 0) {
             // 顶部搜索与空间切换
@@ -131,7 +172,7 @@ struct ContentView: View {
 
             Divider()
 
-            List {
+            List(selection: sidebarSelection) {
                 HStack {
                     Text("新建对话")
                         .font(.caption)
@@ -154,14 +195,12 @@ struct ContentView: View {
                             .lineLimit(1)
                         Spacer()
                     }
+                    .tag(conversation.id)
                     .contentShape(Rectangle())
                     .listRowBackground(
                         (conversation.id == selectedConversation?.id ? Color.white.opacity(0.06) : .clear)
                             .background(Color.clear)
                     )
-                    .onTapGesture {
-                        selectConversation(conversation)
-                    }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             deleteConversation(conversation)
@@ -213,22 +252,45 @@ struct ContentView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(
-                LinearGradient(
-                    colors: [Color.black.opacity(0.0), Color.black.opacity(0.35)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+                Group {
+                    if colorScheme == .dark {
+                        LinearGradient(
+                            colors: [Color.black.opacity(0.0), Color.black.opacity(0.35)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    } else {
+                        LinearGradient(
+                            colors: [Color.black.opacity(0.0), Color.black.opacity(0.06)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+                }
             )
         }
         .background(
-            LinearGradient(
-                colors: [
-                    Color(red: 18/255, green: 19/255, blue: 23/255),
-                    Color(red: 10/255, green: 12/255, blue: 28/255)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            Group {
+                if colorScheme == .dark {
+                    LinearGradient(
+                        colors: [
+                            Color(red: 18/255, green: 19/255, blue: 23/255),
+                            Color(red: 10/255, green: 12/255, blue: 28/255)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                } else {
+                    LinearGradient(
+                        colors: [
+                            Color(red: 245/255, green: 246/255, blue: 250/255),
+                            Color(red: 230/255, green: 232/255, blue: 242/255)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+            }
         )
     }
 
@@ -278,7 +340,13 @@ struct ContentView: View {
             .padding(.vertical, 8)
         }
         .background(
-            Color(red: 20/255, green: 21/255, blue: 25/255)
+            Group {
+                if colorScheme == .dark {
+                    Color(red: 20/255, green: 21/255, blue: 25/255)
+                } else {
+                    Color(red: 244/255, green: 245/255, blue: 250/255)
+                }
+            }
         )
     }
 
@@ -490,15 +558,23 @@ struct ContentView: View {
 
 struct BackgroundGradientView: View {
     @State private var animate = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        Color(red: 14/255, green: 15/255, blue: 19/255)
+        Group {
+            if colorScheme == .dark {
+                Color(red: 14/255, green: 15/255, blue: 19/255)
+            } else {
+                Color(red: 242/255, green: 244/255, blue: 250/255)
+            }
+        }
     }
 }
 
 struct ChatMessagesScrollView: View {
     let messages: [ChatMessage]
     var animationNamespace: Namespace.ID
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
             ScrollViewReader { proxy in
@@ -518,7 +594,9 @@ struct ChatMessagesScrollView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 16)
             }
-            .background(Color.black.opacity(0.25))
+            .background(
+                Color.black.opacity(colorScheme == .dark ? 0.25 : 0.06)
+            )
             .onChange(of: messages.count) { _, _ in
                 if let last = messages.last {
                     withAnimation(.easeOut(duration: 0.35)) {
@@ -538,6 +616,7 @@ struct ChatMessagesScrollView: View {
 struct ChatBubbleView: View {
     let message: ChatMessage
     var animationNamespace: Namespace.ID
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
@@ -644,9 +723,14 @@ struct ChatBubbleView: View {
                 )
             } else {
                 LinearGradient(
-                    colors: [
+                    colors: colorScheme == .dark
+                    ? [
                         Color.gray.opacity(0.3),
                         Color.gray.opacity(0.5)
+                    ]
+                    : [
+                        Color.gray.opacity(0.15),
+                        Color.gray.opacity(0.25)
                     ],
                     startPoint: .top,
                     endPoint: .bottom

@@ -6,6 +6,8 @@
 
 ![chatGLM iOS UI 示例](https://github.com/jacksonon/chatGLM/raw/main/sample2.png)
 
+![chatGLM iPadOS UI 示例](https://github.com/jacksonon/chatGLM/raw/main/sample3.png)
+
 ## 架构概览
 
 - `chatGLMApp.swift`: 应用入口，加载统一的聊天界面。
